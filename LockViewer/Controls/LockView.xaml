@@ -1,0 +1,99 @@
+﻿<UserControl x:Class="LockViewer.Controls.LockView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:i="clr-namespace:System.Windows.Interactivity;assembly=System.Windows.Interactivity"
+             xmlns:SymConvert="clr-namespace:Symphony.Conductor.Converters;assembly=SymphonyConductor"
+             xmlns:SymTriggers="clr-namespace:Symphony.Conductor.Triggers;assembly=SymphonyConductor"
+             mc:Ignorable="d" 
+             d:DesignHeight="600" d:DesignWidth="900">
+
+    <UserControl.Resources>
+        <SymConvert:SynergyAlphaConverter x:Key="alphaConverter"></SymConvert:SynergyAlphaConverter>
+        <SymConvert:SynergyDecimalDateConverter x:Key="dateConverter"></SymConvert:SynergyDecimalDateConverter>
+        <SymConvert:SynergyIntConverter x:Key="intConverter"></SymConvert:SynergyIntConverter>
+    </UserControl.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="auto"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+            <RowDefinition Height="auto"></RowDefinition>
+        </Grid.RowDefinitions>
+
+        <ToolBar Grid.Row="0">
+            <Button ToolTip="Refresh the lock information" Command="{Binding Path=SimpleCommand}" CommandParameter="refresh">
+                <Button.Content>
+                    <Image Source="..\Images\Refresh.png" Height="30" Width="30"></Image>
+                </Button.Content>
+            </Button>
+            <Button ToolTip="Clean unlocked records from the list" Command="{Binding Path=SimpleCommand}" CommandParameter="clear">
+                <Button.Content>
+                    <Image Source="..\Images\Clean.png" Height="30" Width="30"></Image>
+                </Button.Content>
+            </Button>
+            <Button ToolTip="Define the refresh rate" Command="{Binding Path=SimpleCommand}" CommandParameter="rate">
+                <Button.Content>
+                    <Image Source="..\Images\Clock.png" Height="30" Width="30"></Image>
+                </Button.Content>
+            </Button>
+        </ToolBar>
+        
+        <DataGrid Grid.Row="1" 
+                ItemsSource="{Binding Path=LockData}"
+                SelectedItem="{Binding Path=CurrentLockItem}"
+                AutoGenerateColumns="False" IsReadOnly="True">
+            <i:Interaction.Triggers>
+                <i:EventTrigger EventName="Sorting">
+                    <SymTriggers:DataGridCustomerSorting ItemsSource="{Binding Path=LockData}"></SymTriggers:DataGridCustomerSorting>
+                </i:EventTrigger>
+            </i:Interaction.Triggers>
+            <DataGrid.CellStyle>
+                <Style TargetType="DataGridCell">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Path=Lock_status, Converter={StaticResource intConverter}}" Value="1">
+                            <Setter Property="Background" Value="#FFDDE7F9"></Setter>
+                            <Setter Property="FontWeight" Value="Bold"></Setter>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Path=Lock_status, Converter={StaticResource intConverter}}" Value="0">
+                            <Setter Property="Background" Value="White"></Setter>
+                            <Setter Property="FontWeight" Value="Normal"></Setter>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.CellStyle>
+
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Lock date" Binding="{Binding Path=LockDate, StringFormat={}{0:dddd MMMM dd}}" FontSize="16"></DataGridTextColumn>
+                <DataGridTextColumn Header="Time of lock" Binding="{Binding Path=LockDate, StringFormat=HH:mm:ss}" FontSize="16">
+                    <DataGridTextColumn.HeaderStyle>
+                        <Style TargetType="DataGridColumnHeader">
+                            <Setter Property="HorizontalContentAlignment" Value="Center"></Setter>
+                        </Style>
+                    </DataGridTextColumn.HeaderStyle>
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Center"></Setter>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="IO Operation" Binding="{Binding Path=File_operation, Converter={StaticResource alphaConverter}}">
+                    <DataGridTextColumn.HeaderStyle>
+                        <Style TargetType="DataGridColumnHeader">
+                            <Setter Property="HorizontalContentAlignment" Value="Center"></Setter>
+                        </Style>
+                    </DataGridTextColumn.HeaderStyle>
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Center"></Setter>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Width="auto" Header="Primary key" Binding="{Binding Path=Record_key, Converter={StaticResource alphaConverter}}" FontSize="16"></DataGridTextColumn>
+                <DataGridTextColumn Width="auto" Header="Username" Binding="{Binding Path=Username, Converter={StaticResource alphaConverter}}" FontSize="16"></DataGridTextColumn>
+                <DataGridTextColumn Width="auto" Header="Module" Binding="{Binding Path=Module, Converter={StaticResource alphaConverter}}" FontSize="16"></DataGridTextColumn>
+                <DataGridTextColumn Width="*" Header="Physical file name" Binding="{Binding Path=File_name, Converter={StaticResource alphaConverter}}" FontSize="16"></DataGridTextColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+</UserControl>

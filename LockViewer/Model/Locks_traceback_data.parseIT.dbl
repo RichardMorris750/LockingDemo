@@ -1,0 +1,459 @@
+;;
+;;This is a code generated file and should not be modified in any way
+;;
+;;Any manual modifications will be lost if/when the file is re-generated
+;;
+import System
+import System.Collections.Generic
+import System.Text
+
+namespace LockViewer.Model
+	
+	public partial class Locks_traceback_data extends RCPConductor.Model.DataObjectBase
+
+		;;make the record availalbe and a copy
+		.include 'locks_traceback' repository, private record = 'locks_traceback_main', prefix = "m", end
+		.include 'locks_traceback' repository, private record = 'locks_traceback_store', prefix = "m", end
+	
+		;;; <summary>
+		;;;  constructor, initialise the base fields
+		;;; </summary>
+		public method Locks_traceback_data
+			endparams
+			parent()
+		proc
+			init locks_traceback_main
+			init locks_traceback_store
+		endmethod
+
+		;;; <summary>
+		;;;  alternate constructor, accepts the inital value to assign to the object
+		;;; </summary>
+		public method Locks_traceback_data
+			in req synRec		,String
+			endparams
+			parent()
+		proc
+			SynergyRecord = synRec
+		endmethod
+
+		;;Expose the individual properties to bind against
+
+
+        ;;mGuid
+		public property Guid, a50
+			method get
+			proc
+				mreturn %atrim(locks_traceback_main.mGuid)
+			endmethod
+			method set
+			proc
+				locks_traceback_main.mGuid = value
+				if (locks_traceback_main.mGuid != locks_traceback_store.mGuid)
+				begin
+					ValidateEnteredData("GUID", "GUID", 0, 0, 0, 0)
+					RaisePropertyChanged("Guid")
+					locks_traceback_store.mGuid = locks_traceback_main.mGuid
+				end
+			endmethod
+		endproperty
+
+        ;;mLine_number
+		public property Line_number, d4
+			method get
+			proc
+				mreturn locks_traceback_main.mLine_number
+			endmethod
+			method set
+			proc
+				locks_traceback_main.mLine_number = value
+				if (locks_traceback_main.mLine_number != locks_traceback_store.mLine_number)
+				begin
+					ValidateEnteredData("LINE_NUMBER", "LINE_NUMBER", 0, 0, 0, 0)
+					RaisePropertyChanged("Line_number")
+					locks_traceback_store.mLine_number = locks_traceback_main.mLine_number
+				end
+			endmethod
+		endproperty
+
+        ;;mRoutine_line_number
+		public property Routine_line_number, d4
+			method get
+			proc
+				mreturn locks_traceback_main.mRoutine_line_number
+			endmethod
+			method set
+			proc
+				locks_traceback_main.mRoutine_line_number = value
+				if (locks_traceback_main.mRoutine_line_number != locks_traceback_store.mRoutine_line_number)
+				begin
+					ValidateEnteredData("ROUTINE_LINE_NUMBER", "ROUTINE_LINE_NUMBER", 0, 0, 0, 0)
+					RaisePropertyChanged("Routine_line_number")
+					locks_traceback_store.mRoutine_line_number = locks_traceback_main.mRoutine_line_number
+				end
+			endmethod
+		endproperty
+
+        ;;mRoutine
+		public property Routine, a32
+			method get
+			proc
+				mreturn %atrim(locks_traceback_main.mRoutine)
+			endmethod
+			method set
+			proc
+				locks_traceback_main.mRoutine = value
+				if (locks_traceback_main.mRoutine != locks_traceback_store.mRoutine)
+				begin
+					ValidateEnteredData("ROUTINE", "ROUTINE", 0, 0, 0, 0)
+					RaisePropertyChanged("Routine")
+					locks_traceback_store.mRoutine = locks_traceback_main.mRoutine
+				end
+			endmethod
+		endproperty
+
+        ;;mSpare
+		public property Spare, a10
+			method get
+			proc
+				mreturn %atrim(locks_traceback_main.mSpare)
+			endmethod
+			method set
+			proc
+				locks_traceback_main.mSpare = value
+				if (locks_traceback_main.mSpare != locks_traceback_store.mSpare)
+				begin
+					ValidateEnteredData("SPARE", "SPARE", 0, 0, 0, 0)
+					RaisePropertyChanged("Spare")
+					locks_traceback_store.mSpare = locks_traceback_main.mSpare
+				end
+			endmethod
+		endproperty
+
+		;;; <summary>
+		;;;  Required property to expose the complete synergy record
+		;;; </summary>
+	
+		public override property SynergyRecord, String
+			method get
+			proc
+				mreturn locks_traceback_main
+			endmethod
+			method set
+			proc
+				locks_traceback_main = value
+				;;signal that all fields have changed
+	
+
+				if (locks_traceback_main.mGuid != locks_traceback_store.mGuid)
+				begin
+					SetFieldValid("Guid")
+					RaisePropertyChanged("Guid")
+				end
+
+				if (locks_traceback_main.mLine_number != locks_traceback_store.mLine_number)
+				begin
+					SetFieldValid("Line_number")
+					RaisePropertyChanged("Line_number")
+				end
+
+				if (locks_traceback_main.mRoutine_line_number != locks_traceback_store.mRoutine_line_number)
+				begin
+					SetFieldValid("Routine_line_number")
+					RaisePropertyChanged("Routine_line_number")
+				end
+
+				if (locks_traceback_main.mRoutine != locks_traceback_store.mRoutine)
+				begin
+					SetFieldValid("Routine")
+					RaisePropertyChanged("Routine")
+				end
+
+				if (locks_traceback_main.mSpare != locks_traceback_store.mSpare)
+				begin
+					SetFieldValid("Spare")
+					RaisePropertyChanged("Spare")
+				end
+	
+				locks_traceback_store = locks_traceback_main
+			endmethod
+		endproperty
+			
+		;;; <summary>
+		;;; allow the host to initialise all fields.
+		;;; </summary>
+		;;; <returns></returns>
+		public override method InitData	,void
+		proc
+			init locks_traceback_main
+			init locks_traceback_store
+			RaisePropertyChanged("Guid")
+			RaisePropertyChanged("Line_number")
+			RaisePropertyChanged("Routine_line_number")
+			RaisePropertyChanged("Routine")
+			RaisePropertyChanged("Spare")
+		endmethod
+		
+		;;; <summary>
+		;;; allow the hsot to validate all fields.  Each field will fire
+		;;; the validation method
+		;;; </summary>
+		;;; <returns></returns>
+		public override method InitialValidateData, void
+			endparams
+		proc
+
+			ValidateEnteredData("GUID", "GUID", 0, 0, 0, 0)
+			RaisePropertyChanged("Guid")
+			ValidateEnteredData("LINE_NUMBER", "LINE_NUMBER", 0, 0, 0, 0)
+			RaisePropertyChanged("Line_number")
+			ValidateEnteredData("ROUTINE_LINE_NUMBER", "ROUTINE_LINE_NUMBER", 0, 0, 0, 0)
+			RaisePropertyChanged("Routine_line_number")
+			ValidateEnteredData("ROUTINE", "ROUTINE", 0, 0, 0, 0)
+			RaisePropertyChanged("Routine")
+			ValidateEnteredData("SPARE", "SPARE", 0, 0, 0, 0)
+			RaisePropertyChanged("Spare")
+			
+		endmethod
+		
+		;;; <summary>
+		;;; indicate from the UI which field now has focus.  This ten signals the
+		;;; CurrentFieldInfo change eventso the ?UI can getthe current field details
+		;;; </summary>
+		;;; <param name="fieldName"></param>
+		;;; <returns></returns>
+		public override method SetFieldFocusFlag	,void
+			in req fieldName						,String
+			endparams
+		proc
+			using fieldName select
+			("GUID"), mCurrentField = 1
+			("LINE_NUMBER"), mCurrentField = 2
+			("ROUTINE_LINE_NUMBER"), mCurrentField = 3
+			("ROUTINE"), mCurrentField = 4
+			("SPARE"), mCurrentField = 5
+			(),
+				mCurrentField = 0
+			endusing
+			RaisePropertyChanged("CurrentFieldInfo")
+		endmethod
+		
+		;;; <summary>
+		;;; read only property that returns the current fields information
+		;;; </summary>
+		;;; <returns></returns>
+		public property CurrentFieldInfo	,String
+			method get
+			proc
+				using mCurrentField select
+			(1),	mreturn ""
+			(2),	mreturn ""
+			(3),	mreturn ""
+			(4),	mreturn ""
+			(5),	mreturn ""
+			(),	mreturn ""	;;if incorrect field value or not configured, ensure we clear the return value
+				endusing
+			endmethod
+		endproperty
+			
+        private mEnableGuid	,Boolean	,true
+        private mEnableLine_number	,Boolean	,true
+        private mEnableRoutine_line_number	,Boolean	,true
+        private mEnableRoutine	,Boolean	,true
+        private mEnableSpare	,Boolean	,true
+
+		public property GuidIsEnabled, Boolean
+			method get
+			proc
+				mreturn mEnableGuid
+			endmethod
+			method set
+			proc
+				mEnableGuid = value
+				RaisePropertyChanged("GuidIsEnabled")
+			endmethod
+		endproperty
+		public property Line_numberIsEnabled, Boolean
+			method get
+			proc
+				mreturn mEnableLine_number
+			endmethod
+			method set
+			proc
+				mEnableLine_number = value
+				RaisePropertyChanged("Line_numberIsEnabled")
+			endmethod
+		endproperty
+		public property Routine_line_numberIsEnabled, Boolean
+			method get
+			proc
+				mreturn mEnableRoutine_line_number
+			endmethod
+			method set
+			proc
+				mEnableRoutine_line_number = value
+				RaisePropertyChanged("Routine_line_numberIsEnabled")
+			endmethod
+		endproperty
+		public property RoutineIsEnabled, Boolean
+			method get
+			proc
+				mreturn mEnableRoutine
+			endmethod
+			method set
+			proc
+				mEnableRoutine = value
+				RaisePropertyChanged("RoutineIsEnabled")
+			endmethod
+		endproperty
+		public property SpareIsEnabled, Boolean
+			method get
+			proc
+				mreturn mEnableSpare
+			endmethod
+			method set
+			proc
+				mEnableSpare = value
+				RaisePropertyChanged("SpareIsEnabled")
+			endmethod
+		endproperty
+			
+		public override method CompareObjects	,int
+			in req obj1							,@Object
+			in req obj2							,@Object
+			in req colName						,String
+			in req sortDir						,RCPConductor.Framework.SynergySortOrder
+			endparams
+
+			.include 'locks_traceback' repository, record = 'data1', end
+			.include 'locks_traceback' repository, record = 'data2', end
+			
+			record
+				result		,int
+			endrecord
+		proc
+			data1 = ((Locks_data)obj1).SynergyRecord
+			data2 = ((Locks_data)obj2).SynergyRecord
+			using colName select
+			("Guid"),
+			begin
+				if (data1.guid == data2.guid) then
+					result = 0
+				else
+				begin
+					if (data1.guid > data2.guid) then
+					begin
+						if (sortDir == RCPConductor.Framework.SynergySortOrder.Ascending) then
+							result = -1
+						else
+							result = 1
+					end
+					else
+					begin
+						if (sortDir == RCPConductor.Framework.SynergySortOrder.Descending) then
+							result = -1
+						else
+							result = 1
+					end
+				end
+			end
+			("Line_number"),
+			begin
+				if (data1.line_number == data2.line_number) then
+					result = 0
+				else
+				begin
+					if (data1.line_number > data2.line_number) then
+					begin
+						if (sortDir == RCPConductor.Framework.SynergySortOrder.Ascending) then
+							result = -1
+						else
+							result = 1
+					end
+					else
+					begin
+						if (sortDir == RCPConductor.Framework.SynergySortOrder.Descending) then
+							result = -1
+						else
+							result = 1
+					end
+				end
+			end
+			("Routine_line_number"),
+			begin
+				if (data1.routine_line_number == data2.routine_line_number) then
+					result = 0
+				else
+				begin
+					if (data1.routine_line_number > data2.routine_line_number) then
+					begin
+						if (sortDir == RCPConductor.Framework.SynergySortOrder.Ascending) then
+							result = -1
+						else
+							result = 1
+					end
+					else
+					begin
+						if (sortDir == RCPConductor.Framework.SynergySortOrder.Descending) then
+							result = -1
+						else
+							result = 1
+					end
+				end
+			end
+			("Routine"),
+			begin
+				if (data1.routine == data2.routine) then
+					result = 0
+				else
+				begin
+					if (data1.routine > data2.routine) then
+					begin
+						if (sortDir == RCPConductor.Framework.SynergySortOrder.Ascending) then
+							result = -1
+						else
+							result = 1
+					end
+					else
+					begin
+						if (sortDir == RCPConductor.Framework.SynergySortOrder.Descending) then
+							result = -1
+						else
+							result = 1
+					end
+				end
+			end
+			("Spare"),
+			begin
+				if (data1.spare == data2.spare) then
+					result = 0
+				else
+				begin
+					if (data1.spare > data2.spare) then
+					begin
+						if (sortDir == RCPConductor.Framework.SynergySortOrder.Ascending) then
+							result = -1
+						else
+							result = 1
+					end
+					else
+					begin
+						if (sortDir == RCPConductor.Framework.SynergySortOrder.Descending) then
+							result = -1
+						else
+							result = 1
+					end
+				end
+			end
+				(),
+				result = 0
+			endusing
+
+			mreturn result
+		endmethod
+
+		
+	endclass
+	
+endnamespace
+

@@ -1,0 +1,81 @@
+
+import System
+import System.Collections.Generic
+import System.Text
+
+namespace LockViewer.Model
+
+	public partial class Locks_data
+
+		public property LockDate, DateTime
+			method get
+				record
+					intYear	,int32
+					intMon	,int32
+					intDay	,int32
+					intHour	,Int32
+					intMin	,Int32
+					intSec	,Int32
+				endrecord
+			proc
+				intYear = locks_main.str_lock_date(1:4)
+				intMon = locks_main.str_lock_date(5:2)
+				intDay = locks_main.str_lock_date(7:2)
+				intHour = locks_main.str_lock_time(1:2)
+				intMin = locks_main.str_lock_time(3:2)
+				intSec = locks_main.str_lock_time(5:2)
+				mreturn new DateTime(intYear, intMon, intDay, intHour, intMin, intSec)
+			endmethod
+		endproperty
+		
+		public override method CustomCompareObjects	,int
+			in req obj1					,@Object
+			in req obj2					,@Object
+			in req colName				,String
+			in req sortDir				,Symphony.Conductor.Framework.SynergySortOrder
+			endparams
+
+			.include 'locks' repository, record = 'data1', end
+			.include 'locks' repository, record = 'data2', end
+			
+			record
+				result		,int
+			endrecord
+		proc
+;			data1 = ((Locks_data)obj1).SynergyRecord
+;			data2 = ((Locks_data)obj2).SynergyRecord
+;			using colName select
+;			("LockDate"),
+;			begin
+;				if (data1.str_lock_time == data2.str_lock_time) then
+;					result = 0
+;				else
+;				begin
+;					if (data1.str_lock_time > data2.str_lock_time) then
+;					begin
+;						if (sortDir == Symphony.Conductor.Framework.SynergySortOrder.Ascending) then
+;							result = -1
+;						else
+;							result = 1
+;					end
+;					else
+;					begin
+;						if (sortDir == Symphony.Conductor.Framework.SynergySortOrder.Descending) then
+;							result = -1
+;						else
+;							result = 1
+;					end
+;					
+;				end
+;			end
+;			(),
+;				result = 0
+;			endusing
+;
+			mreturn result
+		endmethod
+
+	endclass
+
+endnamespace
+

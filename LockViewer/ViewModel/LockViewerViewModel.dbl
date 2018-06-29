@@ -1,0 +1,216 @@
+
+import System
+import System.Collections.Generic
+import System.Text
+import System.Collections.ObjectModel
+import System.Windows.Threading
+
+import LockViewer.Model
+
+import Symphony.Conductor.ViewModel
+import Symphony.Conductor.Commands
+
+namespace LockViewer.ViewModel
+	
+	public class LockViewerViewModel extends MaintenanceViewModel
+		
+		;;include the lock structure
+		private mLocks	,STRLocks
+		
+		;;store the lock manager control file channel
+		private mLockMasterChannel			,i4
+		private mLockMasterUpdateChannel	,i4
+		
+		public method LockViewerViewModel
+			in req control	,@System.Windows.FrameworkElement
+			endparams
+			parent(control)
+		proc
+			
+			delet("SYMPHONYDATA:LockControlMaster.ism")
+			isamc("SYMPHONYDATA:LockControlMaster.ism", ^size(mLocks), 1, "START=1, LENGTH=50")
+
+			mSimpleCommand=new GenericCommand(this, "simple")
+			addhandler(mSimpleCommand.CommandExecuted, simpleCommand_execute)
+			
+			mLockList = new ObservableCollection<Locks_data>()
+			
+			clear mLockMasterChannel, mLockMasterUpdateChannel
+			
+			try
+			begin
+				open(mLockMasterChannel, 'i:i', 'SYMPHONYDATA:LockControlMaster')
+				open(mLockMasterUpdateChannel, 'u:i', 'SYMPHONYDATA:LockControlMaster')
+			end
+			catch (e, @Exception)
+				throw
+			endtry
+			
+			;;set defaults
+			mLockOptions = new Locks_options_data()
+			mLockOptions.Refresh_rate = 1000
+			
+			mTimer = new DispatcherTimer()
+			addhandler(mTimer.Tick, event_timerTick)
+			mTimer.Interval = TimeSpan.FromMilliseconds(mLockOptions.Refresh_rate)
+			
+			updateLockList()
+			
+			mTimer.Start()
+			
+			this.MoveToState("ViewLocksState")
+			
+			
+		endmethod
+		
+		private mSimpleCommand	,@GenericCommand
+		
+		public property SimpleCommand, @GenericCommand
+			method get
+			proc
+				mreturn mSimpleCommand
+			endmethod
+			method set
+			proc
+				mSimpleCommand = value
+			endmethod
+		endproperty
+		
+		private method simpleCommand_execute	,void
+			cmdName								,@Object
+			parameter							,String
+			endparams
+		proc
+			using parameter select
+			("clear"),
+			begin
+				mTimer.Stop()
+				;;begining of the file please
+				find(mLockMasterUpdateChannel,, ^FIRST) [ERR=eofMaster]
+				
+				data todays_system_date	,a20	,%datetime
+				data todays_date	,d8	
+				todays_date = todays_system_date(1:8)
+
+				;now read each lock record
+				repeat
+				begin
+					data tmpLock	,@Locks_data
+					reads(mLockMasterUpdateChannel, mLocks, eofMaster) [ERR=nextLabel]
+					if (mLocks.str_lock_status == false || (mLocks.str_lock_date < todays_date))
+						delete(mLockMasterUpdateChannel)
+				nextLabel,
+				end
+			eofMaster,
+				updateLockList()
+				mTimer.Start()
+			end
+			("refresh"),
+				updateLockList()
+			("rate"),
+				nop
+			endusing
+		endmethod
+		
+		
+		private method event_timerTick	,void
+			sender						,@Object
+			ea							,@EventArgs
+			endparams
+		proc
+			updateLockList()
+		endmethod
+		
+		private mTimer	,@DispatcherTimer
+		
+		private mLockOptions	,@Locks_options_data
+		
+		public property LockOptions, @Locks_options_data
+			method get
+			proc
+				mreturn mLockOptions
+			endmethod
+			method set
+			proc
+				mLockOptions = value
+			endmethod
+		endproperty
+		
+		
+		private mCurrentLockItem	,@Locks_data
+		
+		public property CurrentLockItem, @Locks_data
+			method get
+			proc
+				mreturn mCurrentLockItem
+			endmethod
+			method set
+			proc
+				mCurrentLockItem = value
+				RaisePropertyChanged("CurrentLockItem")
+			endmethod
+		endproperty
+		
+		
+		private mLockList	,@ObservableCollection<Locks_data>
+		
+		public property LockData, @ObservableCollection<Locks_data>
+			method get
+			proc
+				mreturn mLockList
+			endmethod
+			method set
+			proc
+				mLockList = value
+			endmethod
+		endproperty
+		
+		private method updateLockList	,void
+			endparams
+			
+			record
+				lockItem	,@Locks_data
+			endrecord
+			record
+				storeLock	,@Locks_data
+		proc
+			mTimer.Stop()
+			if (mCurrentLockItem == ^null) then
+				storeLock = new Locks_data()
+			else
+				storeLock = mCurrentLockItem
+			
+			mCurrentLockItem=^null
+			
+			;;start with a blank list!
+			mLockList.Clear()
+			
+			;;begining of the file please
+			find(mLockMasterChannel,, ^FIRST) [ERR=eofMaster]
+			
+			;now read each lock record
+			repeat
+			begin
+				data tmpLock	,@Locks_data
+				reads(mLockMasterChannel, mLocks, eofMaster)
+				tmpLock = new Locks_data(mLocks)
+				mLockList.Add(tmpLock)
+				if (storeLock.Guid == tmpLock.Guid)
+					mCurrentLockItem = storeLock
+			end
+			
+		eofMaster,
+			
+			if (mCurrentLockItem != ^null)
+				RaisePropertyChanged("CurrentLockItem")
+				
+			mTimer.Start()
+			
+			mreturn
+			
+		endmethod
+		
+	endclass
+	
+endnamespace
+

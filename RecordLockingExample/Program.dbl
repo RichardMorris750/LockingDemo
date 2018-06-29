@@ -1,0 +1,254 @@
+import Synergex.SynergyDE.Select
+import RecordLockingLibrary
+;;**********************************************************************
+;;
+;; Title:       Program.dbl
+;;
+;; Type:        Program
+;;
+;; Description: Demonstrate Synergy IO Hooks 
+;;
+;; Author:      Richard C. Morris, Synergex Technology Evangelist
+;;
+;; Copyright (c) 2016, Synergex International, Inc. All rights reserved.
+;;
+;; Redistribution and use in source and binary forms, with or without
+;; modification, are permitted provided that the following conditions are met:
+;;
+;; * Redistributions of source code must retain the above copyright notice,
+;;   this list of conditions and the following disclaimer.
+;;
+;; * Redistributions in binary form must reproduce the above copyright notice,
+;;   this list of conditions and the following disclaimer in the documentation
+;;   and/or other materials provided with the distribution.
+;;
+;; THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+;; AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+;; IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+;; ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+;; LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+;; CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+;; SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+;; INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+;; CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+;; ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+;; POSSIBILITY OF SUCH DAMAGE.
+;;
+;;*****************************************************************************
+main 
+	.include 'part' repository, record='part'
+	.include 'group' repository, record='group'
+	.include 'supplier' repository, record='supplier'
+
+	record 
+		ttChan			,i4,0
+		partChan		,i4,0
+		groupChan		,i4,0
+		supplierChan	,i4,0
+		userName		,a40
+		tempEntry		,a1
+	endrecord
+
+	record
+		partSelector	,@Select
+		tempID			,a20
+		recordsInFile	,i4
+		recordsUpdated	,i4
+	endrecord
+	
+proc
+	
+	begin
+		data logValue	,a50
+		data logLength	,i4
+		getlog("USERNAME", logValue, logLength)
+
+		;;this allows us to know who is locking the record
+		userName = logValue
+
+		;;this setting defines the number of times er will retry if we get a record locked while doing the select
+		setlog("SYMPHONY_LOCKED_ERROR_MAX_COUNT", 3, logLength)
+
+		;;if set to TRUE this setting will cause the locked record to be skipped while doing the select.  This
+		;;means our results set will not contain the locked record.  Setting to true will cause a "record locked" error.
+		;;if you are then doing SparesUpdate calls the locked record will NOT be processed.
+		setlog("SYMPHONY_LOCKED_ERROR_SELECT_SKIP", "false", logLength)
+
+		;;if set to TRUE this setting will cause Select.Delete() operations to skip locked records.
+		setlog("SYMPHONY_LOCKED_ERROR_DELETE_SKIP", "TRUE", logLength)
+
+	end
+	
+	open(ttChan, i, 'TT:')
+	try
+	begin
+		open(partChan, 'u:i', 'SYMPHONYDATA:parts.ism')
+		open(groupChan, 'u:i', 'SYMPHONYDATA:groups.ism')
+		open(supplierChan, 'u:i', 'SYMPHONYDATA:suppliers.ism')
+	end
+	catch (e, @Exception)
+	begin
+		writes(ttChan, "")
+		writes(ttChan, "You must install the Symphony example data to run this demo")
+		reads(ttChan, tempEntry)
+		flags(7000000,1)
+		stop
+	end
+	endtry
+	
+	;;define the IO Hook handler class
+	(void)new IOManager.LockRecorder(partChan, userName)
+	(void)new IOManager.LockRecorder(groupChan, userName)
+	(void)new IOManager.LockRecorder(supplierChan, userName)
+	
+	;;lock some records
+	reads(supplierChan, supplier, eof)
+	writes(ttChan, "Supplier: " + %atrim(supplier.supplier_id) + " : " + %atrim(supplier.name) + ", locked")
+
+	reads(groupChan, group, eof)
+	writes(ttChan, "Group: " + %atrim(group.group_id) + " : " + %atrim(group.description) + ", locked")
+
+	reads(partChan, part, eof)
+	writes(ttChan, "Part: " + %atrim(part.id) + " : " + %atrim(part.description) + ", locked")
+	
+	writes(ttChan, "")
+	writes(ttChan, "Press <ENTER> to perform the next operation")
+	reads(ttChan, tempEntry)
+	
+	reads(partChan, part, eof)
+	writes(ttChan, "Part: " + %atrim(part.id) + " : " + %atrim(part.description) + ", locked")
+
+	writes(ttChan, "")
+	writes(ttChan, "Press <ENTER> to perform the next operation")
+	reads(ttChan, tempEntry)
+
+	reads(groupChan, group, eof)
+	writes(ttChan, "Group: " + %atrim(group.group_id) + " : " + %atrim(group.description) + ", locked")
+
+	writes(ttChan, "")
+	writes(ttChan, "Press <ENTER> to perform the next operation")
+	reads(ttChan, tempEntry)
+
+	reads(supplierChan, supplier, eof)
+	writes(ttChan, "Suppller: " + %atrim(supplier.supplier_id) + " : " + %atrim(supplier.name) + ", locked")
+
+	writes(ttChan, "")
+	writes(ttChan, "Press <ENTER> to perform the next operation")
+	reads(ttChan, tempEntry)
+
+	unlock partChan
+	writes(ttChan, "Part: unlocked")
+
+	writes(ttChan, "")
+	writes(ttChan, "Press <ENTER> to perform the next operation")
+	reads(ttChan, tempEntry)
+
+	unlock groupChan
+	writes(ttChan, "Group: unlocked")
+
+	writes(ttChan, "")
+	writes(ttChan, "Press <ENTER> to perform the next operation")
+	reads(ttChan, tempEntry)
+
+	unlock supplierChan
+	writes(ttChan, "Supplier: unlocked")
+
+	writes(ttChan, "")
+	writes(ttChan, "Press <ENTER> to perform the next operation")
+	reads(ttChan, tempEntry)
+
+	writes(ttChan, "")
+	writes(ttChan, "The program is now looping and locking records.")
+	writes(ttChan, "Press <ENTER> to perform the next operation.")
+
+	repeat
+	begin
+		if (%ttsts(ttChan))
+			exitloop
+		reads(supplierChan, supplier, eofloopSupp)
+		sleep 0.1
+		reads(groupChan, group, eofloopGrp)
+		sleep 0.1
+		reads(partChan, part, eofloopPrt)
+		sleep 1
+		
+		if(0)
+		begin
+eofloopSupp,
+			find(supplierChan,, ^FIRST)
+		end
+		if(0)
+		begin
+eofloopGrp,
+			find(groupChan,, ^FIRST)
+		end
+		if(0)
+		begin
+eofloopPrt,
+			find(partChan,, ^FIRST)
+		end
+	end
+	
+	;;here we will lock a record and then use the select class to try to retreive the data 
+	;;uisng an update channel
+
+	unlock partChan
+	unlock supplierChan
+	unlock groupChan
+
+	writes(ttChan, "")
+	writes(ttChan, "The program will now lock a record and then try to perform")
+	writes(ttChan, "a Select on an update channel.  The long pause")
+	writes(ttChan, "is due to the sleep/retry when a locked record is encountered.")
+	writes(ttChan, "Press <ENTER> to perform the next operation.")
+	reads(ttChan, tempEntry)
+
+	reads(partChan, part, eof)
+
+	tempID = part.id
+
+	partSelector = new Select(new From('SYMPHONYDATA:parts.ism', part, '/io=u:i'))
+
+	partSelector.RegisterEvent(new SelectLockRecorder(true))
+
+	recordsInFile = %isinfo(partChan, "NUMRECS")
+
+	writes(ttChan, "")
+	writes(ttChan, "Records in the file: " + %string(recordsInFile))
+	writes(ttChan, "")
+
+	clear recordsInFile, recordsUpdated
+	foreach part in partSelector
+	begin
+		incr recordsInFile
+		part.description = %atrim(part.description) + "1"
+		try
+		begin
+			Select.GetEnum().SparseUpdate(part)
+			incr recordsUpdated
+		end
+		catch (e, @Exception)
+		begin
+			nop
+		end
+		endtry
+	end
+
+	unlock partChan
+
+	writes(ttChan, "")
+	writes(ttChan, "Records selected : " + %string(recordsInFile) + ", records updated: " + %string(recordsUpdated))
+	writes(ttChan, "")
+	writes(ttChan, "Press <ENTER> to close the program.  Please manually close the LockViewer!")
+	writes(ttChan, "")
+	reads(ttChan, tempEntry)
+
+eof,
+	close(partChan)
+	close(groupChan)
+	close(supplierChan)
+	flags(7000000,1)
+	stop
+	
+endmain
+

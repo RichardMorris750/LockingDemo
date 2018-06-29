@@ -1,0 +1,207 @@
+;;
+;;This is a code generated file and should not be modified in any way
+;;
+;;Any manual modifications will be lost if/when the file is re-generated
+;;
+import System
+import System.Collections.Generic
+import System.Text
+
+namespace LockViewer.Model
+	
+	public partial class Locks_options_data extends RCPConductor.Model.DataObjectBase
+
+		;;make the record availalbe and a copy
+		.include 'locks_options' repository, private record = 'locks_options_main', prefix = "m", end
+		.include 'locks_options' repository, private record = 'locks_options_store', prefix = "m", end
+	
+		;;; <summary>
+		;;;  constructor, initialise the base fields
+		;;; </summary>
+		public method Locks_options_data
+			endparams
+			parent()
+		proc
+			init locks_options_main
+			init locks_options_store
+		endmethod
+
+		;;; <summary>
+		;;;  alternate constructor, accepts the inital value to assign to the object
+		;;; </summary>
+		public method Locks_options_data
+			in req synRec		,String
+			endparams
+			parent()
+		proc
+			SynergyRecord = synRec
+		endmethod
+
+		;;Expose the individual properties to bind against
+
+
+        ;;mRefresh_rate
+		public property Refresh_rate, d6
+			method get
+			proc
+				mreturn locks_options_main.mRefresh_rate
+			endmethod
+			method set
+			proc
+				locks_options_main.mRefresh_rate = value
+				if (locks_options_main.mRefresh_rate != locks_options_store.mRefresh_rate)
+				begin
+					ValidateEnteredData("REFRESH_RATE", "REFRESH_RATE", 0, 0, 0, 0)
+					RaisePropertyChanged("Refresh_rate")
+					locks_options_store.mRefresh_rate = locks_options_main.mRefresh_rate
+				end
+			endmethod
+		endproperty
+
+		;;; <summary>
+		;;;  Required property to expose the complete synergy record
+		;;; </summary>
+	
+		public override property SynergyRecord, String
+			method get
+			proc
+				mreturn locks_options_main
+			endmethod
+			method set
+			proc
+				locks_options_main = value
+				;;signal that all fields have changed
+	
+
+				if (locks_options_main.mRefresh_rate != locks_options_store.mRefresh_rate)
+				begin
+					SetFieldValid("Refresh_rate")
+					RaisePropertyChanged("Refresh_rate")
+				end
+	
+				locks_options_store = locks_options_main
+			endmethod
+		endproperty
+			
+		;;; <summary>
+		;;; allow the host to initialise all fields.
+		;;; </summary>
+		;;; <returns></returns>
+		public override method InitData	,void
+		proc
+			init locks_options_main
+			init locks_options_store
+			RaisePropertyChanged("Refresh_rate")
+		endmethod
+		
+		;;; <summary>
+		;;; allow the hsot to validate all fields.  Each field will fire
+		;;; the validation method
+		;;; </summary>
+		;;; <returns></returns>
+		public override method InitialValidateData, void
+			endparams
+		proc
+
+			ValidateEnteredData("REFRESH_RATE", "REFRESH_RATE", 0, 0, 0, 0)
+			RaisePropertyChanged("Refresh_rate")
+			
+		endmethod
+		
+		;;; <summary>
+		;;; indicate from the UI which field now has focus.  This ten signals the
+		;;; CurrentFieldInfo change eventso the ?UI can getthe current field details
+		;;; </summary>
+		;;; <param name="fieldName"></param>
+		;;; <returns></returns>
+		public override method SetFieldFocusFlag	,void
+			in req fieldName						,String
+			endparams
+		proc
+			using fieldName select
+			("REFRESH_RATE"), mCurrentField = 1
+			(),
+				mCurrentField = 0
+			endusing
+			RaisePropertyChanged("CurrentFieldInfo")
+		endmethod
+		
+		;;; <summary>
+		;;; read only property that returns the current fields information
+		;;; </summary>
+		;;; <returns></returns>
+		public property CurrentFieldInfo	,String
+			method get
+			proc
+				using mCurrentField select
+			(1),	mreturn ""
+			(),	mreturn ""	;;if incorrect field value or not configured, ensure we clear the return value
+				endusing
+			endmethod
+		endproperty
+			
+        private mEnableRefresh_rate	,Boolean	,true
+
+		public property Refresh_rateIsEnabled, Boolean
+			method get
+			proc
+				mreturn mEnableRefresh_rate
+			endmethod
+			method set
+			proc
+				mEnableRefresh_rate = value
+				RaisePropertyChanged("Refresh_rateIsEnabled")
+			endmethod
+		endproperty
+			
+		public override method CompareObjects	,int
+			in req obj1							,@Object
+			in req obj2							,@Object
+			in req colName						,String
+			in req sortDir						,RCPConductor.Framework.SynergySortOrder
+			endparams
+
+			.include 'locks_options' repository, record = 'data1', end
+			.include 'locks_options' repository, record = 'data2', end
+			
+			record
+				result		,int
+			endrecord
+		proc
+			data1 = ((Locks_data)obj1).SynergyRecord
+			data2 = ((Locks_data)obj2).SynergyRecord
+			using colName select
+			("Refresh_rate"),
+			begin
+				if (data1.refresh_rate == data2.refresh_rate) then
+					result = 0
+				else
+				begin
+					if (data1.refresh_rate > data2.refresh_rate) then
+					begin
+						if (sortDir == RCPConductor.Framework.SynergySortOrder.Ascending) then
+							result = -1
+						else
+							result = 1
+					end
+					else
+					begin
+						if (sortDir == RCPConductor.Framework.SynergySortOrder.Descending) then
+							result = -1
+						else
+							result = 1
+					end
+				end
+			end
+				(),
+				result = 0
+			endusing
+
+			mreturn result
+		endmethod
+
+		
+	endclass
+	
+endnamespace
+

@@ -1,0 +1,116 @@
+namespace RecordLockingLibrary
+
+	public class SelectLockRecorder extends Synergex.SynergyDE.Select.Event
+
+		private mLockedCount			,i4
+		private mDoingDeleteOperation	,boolean
+
+		public method SelectLockRecorder
+			endparams
+		proc
+			initObject()
+		endmethod
+
+		public method SelectLockRecorder	
+			in req deleteMode	,boolean
+			endparams
+		proc
+			initObject()
+			mDoingDeleteOperation = true
+		endmethod
+
+		private method initObject	,void
+			endparams
+		proc
+			;;set up initial defaults
+			mLockedCount = 0
+			mDoingDeleteOperation = false
+		endmethod
+
+		public override method OnLock	,boolean
+			inout lockQualifier	,n
+			inout waitValue		,n
+			in recordArea		,a
+			in rfaValue			,a
+			endparams
+
+			record
+				response	,boolean
+			endrecord
+		proc
+			response = true
+			sleep 1		;wait to see if the lock will clear
+			incr mLockedCount
+			if (mLockedCount > maxRetry)
+			begin
+				;;we need to return false to throw the locked error
+				
+				;;check if we should just "skip" the record
+				if (lockResponse == true) then
+					lockQualifier = Q_NO_LOCK
+				else
+					response = false
+			end
+			;;returning "false" will cause a "locked" error to be thrown.
+			;;returning "true" will cause the operation to be retired
+			mreturn response
+
+		endmethod
+
+		private mmaxRetyr			,i4
+
+		private property maxRetry	,i4
+			method get
+
+				record
+					logValue	,a100
+					logLength	,i4
+					logStatus	,i4
+				endrecord
+			proc
+				if (mmaxRetyr == 0)
+				begin
+					getlog("SYMPHONY_LOCKED_ERROR_MAX_COUNT", logValue, logLength)
+					try
+					begin
+						if (logLength)
+						begin
+							mmaxRetyr = logValue
+						end
+					end
+					catch (e, @Exception)
+					begin
+						mmaxRetyr = 0
+					end
+					endtry
+				end
+				mreturn mmaxRetyr
+			endmethod
+		endproperty
+		
+		private property lockResponse	,boolean
+			method get
+
+				record
+					logValue	,a100
+					logLength	,i4
+					logStatus	,i4
+				endrecord
+			proc
+				if (mDoingDeleteOperation == true) then
+					getlog("SYMPHONY_LOCKED_ERROR_DELETE_SKIP", logValue, logLength)
+				else
+					getlog("SYMPHONY_LOCKED_ERROR_SELECT_SKIP", logValue, logLength)
+
+				upcase logValue
+
+				if (logLength && logValue == "TRUE ") then
+					mreturn true
+				else
+					mreturn false
+			endmethod
+		endproperty
+		
+	endclass
+
+endnamespace

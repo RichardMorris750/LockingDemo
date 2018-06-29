@@ -1,0 +1,459 @@
+;;**********************************************************************
+;;
+;; Title:       LockRecorder.dbc
+;;
+;; Type:        Class
+;;
+;; Description: IO Hook class to save record locks within a file.
+;;
+;; Author:      Richard C. Morris, Synergex Professional Services Group
+;;
+;; Copyright (c) 2012, Synergex International, Inc. All rights reserved.
+;;
+;; Redistribution and use in source and binary forms, with or without
+;; modification, are permitted provided that the following conditions are met:
+;;
+;; * Redistributions of source code must retain the above copyright notice,
+;;   this list of conditions and the following disclaimer.
+;;
+;; * Redistributions in binary form must reproduce the above copyright notice,
+;;   this list of conditions and the following disclaimer in the documentation
+;;   and/or other materials provided with the distribution.
+;;
+;; THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+;; AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+;; IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+;; ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+;; LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+;; CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+;; SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+;; INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+;; CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+;; ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+;; POSSIBILITY OF SUCH DAMAGE.
+;;
+;;*****************************************************************************
+
+import Synergex.SynergyDE.IOExtensions
+
+namespace IOManager
+
+	public class LockRecorder extends IOHooks
+
+		;;include the lock structure
+		.include 'locks' repository "LOCKRPS", private record = 'mLocks', end
+		;;private member variables
+
+		;;store the actual file channel number
+		private mChannel			,int
+
+		;;store the passed in username
+		private mUserName			,a20
+
+		;;flag indicating if the last record processed was locked
+		private mRecordIsLocked		,boolean
+
+		;;store the lock manager control file channel
+		private static mLockMasterChannel	,int
+
+		;;store the current record RFA
+		private mCurrentRFA			,a6
+
+		private mDeleteRecord		,boolean
+
+		;;; <summary>
+		;;; Default Constructor.
+		;;; </summary>
+		;;; <param name="channel">accept the opened channel variable to assign event handlers to</param>
+		;;; <param name="userName">accept the username</param>
+		public method LockRecorder
+			in channel				,n
+			in userName				,a
+			endparams
+			parent(channel, IOEventMask.Auto, IOEventMask.Auto)
+
+			record
+				fileOpenMode			,a3
+				lockMasterDeleteRecord	,a10
+				getlogLen				,i4
+			endrecord
+		proc
+			try
+			begin
+				mDeleteRecord = false
+				mChannel = channel
+				mUserName = userName
+
+				clear mCurrentRFA
+				clear mRecordIsLocked
+				init mLocks
+
+				;;set up the default values
+				filnm(mChannel, mLocks.file_name)
+				mLocks.process_id = %jbno()
+
+				;;open the lock manager control file
+				open(mLockMasterChannel = 0, "u:i", "SYMPHONYDATA:LockControlMaster.ism")
+
+				getlog("LOCKMASTERDELETERECORD", lockMasterDeleteRecord, getlogLen)
+
+				;;this is forced in this example
+				lockMasterDeleteRecord = "YES"
+
+				if (lockMasterDeleteRecord == "YES")
+				begin
+					mDeleteRecord = true
+				end
+			end
+			finally
+			begin
+				nop
+			end
+			endtry
+
+			mreturn
+
+		endmethod
+
+		;;
+		;;private method to set the current lock situation
+		;;
+		private method setNewLock	,void
+			keyValue				,a
+			operation				,a
+			in flags				,IOFlags
+			endparams
+
+			record
+				sysDateTime	,a20
+				sysDate		,d8 @sysDateTime
+				sysTime		,d6 @sysDateTime + 8
+			endrecord
+
+			record
+				moduleNumber		,i2
+				tmpModule			,a32
+				lineNumber			,d5
+			endrecord
+
+			external function
+				makeUniqueGUID	,a50
+			endexternal
+		proc
+
+			try
+			begin
+				;;if we are setting a new lock, we must first clear any possible existing lock
+				clearExistingLock()
+
+				;;we only set a lock if we are reading and locking records
+				if (flags.band.IOFlags.LOCK_MASK) mreturn
+
+				sysDateTime = %datetime
+
+				mLocks.lock_date = sysDate
+				mLocks.lock_time = sysTime
+				mLocks.lock_status = true
+				mLocks.file_operation = operation
+				mLocks.record_key = keyValue
+				mLocks.username = mUserName
+				modname(2, tmpModule, lineNumber)
+				mLocks.module = %atrim(tmpModule) + "(" + %string(lineNumber, "ZZZX") + ")"
+				repeat
+				begin
+					;;set the unique key information
+					mLocks.GUID = %makeUniqueGUID()
+
+					;;store a record in the file that indicates the record is locked!!
+					try
+					begin
+						mLocks.timestamp = %datetime
+						store(mLockMasterChannel, mLocks, GETRFA:mCurrentRFA)
+						exitloop	;;we are all done
+					end
+					catch (e, @DuplicateException)
+					;;if there is a duplicate key error we must have a duplicate key, so retry
+						sleep 0.1
+					catch (e, @Exception)
+					;;general error so we have a problem
+						throw
+					endtry
+				end
+			end
+			finally
+			begin
+				nop
+			end
+			endtry
+			mreturn
+		endmethod
+
+		;;
+		;;private method to clear the current lock situation
+		;;
+		private method clearExistingLock	,void
+			endparams
+
+			record
+				sysDateTime	,a20
+				sysDate		,d8 @sysDateTime
+				sysTime		,d6 @sysDateTime + 8
+			endrecord
+
+		proc
+			;;we either delete the record or we set the flag that says just clear the flag
+			if (mCurrentRFA != "      ")
+			begin
+				try
+				begin
+					read(mLockMasterChannel, mLocks,, RFA:mCurrentRFA)
+					sysDateTime = %datetime
+					if (mLocks.lock_time)
+					begin
+						;;long lock time
+						data minutes	,d2
+						minutes = sysTime(3:2) - mLocks.lock_time(3:2)
+						if (minutes < 0)
+							minutes = 60 - (minutes * -1)
+						if minutes > 1
+						begin
+							;;let's log this into the lock log file
+							try
+							begin
+								data log_ch	,i4	,%syn_freechn()
+								open(log_ch,A:S,"SYMPHONYDATA:lock_log_file.log")
+								writes (log_ch,%string(%jbno(), 'XXXXXXXXXX') + " Long record lock, user = " + %atrim(mlocks.username) + ", filename = " + %atrim(mLocks.file_name) + " lock time = " + %string(mLocks.lock_time, 'XX:XX:XX') + " release time = " + %string(sysTime, "XX:XX:XX") + " lock key value = " + %atrim(mlocks.record_key) + " module = " + %atrim(mlocks.module))
+								close(log_ch)
+							end
+							catch (e, @Exception)
+								nop
+							endtry
+						end
+					end
+					if (mDeleteRecord) then
+					begin
+						delete(mLockMasterChannel)
+						clear mCurrentRFA
+					end
+					else
+					begin
+						mLocks.lock_status = false
+						write(mLockMasterChannel, mLocks,, GETRFA:mCurrentRFA)
+					end
+				end
+				catch (e, @Exception)
+					throw
+				endtry
+
+			end
+			clear mRecordIsLocked
+		endmethod
+
+		;;; <summary>
+		;;; Hander called prior to the find operation being performed
+		;;; </summary>
+		;;; <param name="key"></param>
+		;;; <param name="in_rfa"></param>
+		;;; <param name="keyNumber"></param>
+		;;; <param name="flags"></param>
+		;;; <returns></returns>
+		public override method Find_pre_operation_hook	,void
+			mismatch in optional keyValue				,n
+			in optional in_rfa							,a
+			in optional keyNumber						,n
+			in flags									,IOFlags
+			endparams
+		proc
+			;;any original lock must have been cleared
+			clearExistingLock()
+		endmethod
+
+		;;; <summary>
+		;;; routine called prior to reading the actualy record from the file
+		;;; </summary>
+		;;; <param name="key"></param>
+		;;; <param name="in_rfa"></param>
+		;;; <param name="keyNumber"></param>
+		;;; <param name="flags"></param>
+		;;; <returns></returns>
+		public override method Read_pre_operation_hook	,void
+			mismatch in optional keyValue				,n
+			in optional in_rfa							,a
+			in optional keyNumber						,n
+			in flags									,IOFlags
+			endparams
+		proc
+			;;any original lock must have been cleared
+			clearExistingLock()
+		endmethod
+
+		;;; <summary>
+		;;; event method called prior to the sequential read operation
+		;;; </summary>
+		;;; <param name="flags"></param>
+		;;; <returns></returns>
+		public override method Reads_pre_operation_hook	,void
+			in flags									,IOFlags
+			endparams
+		proc
+			;;any original lock must have been cleared
+			clearExistingLock()
+		endmethod
+
+		;;; <summary>
+		;;; event method executed before a write operation is performed
+		;;; </summary>
+		;;; <param name="buffer"></param>
+		;;; <param name="recnum"></param>
+		;;; <param name="out_rfa"></param>
+		;;; <param name="flags"></param>
+		;;; <returns></returns>
+		public override method Write_pre_operation_hook	,void
+			inout buffer								,a
+			in optional recnum							,n
+			in optional out_rfa							,a
+			in flags									,IOFlags
+			endparams
+		proc
+			;;any original lock must have been cleared
+			clearExistingLock()
+		endmethod
+
+		;;; <summary>
+		;;; executed prior to the store operation is performed
+		;;; </summary>
+		;;; <param name="buffer"></param>
+		;;; <param name="flags"></param>
+		;;; <returns></returns>
+		public override method Store_pre_operation_hook	,void
+			inout buffer								,a
+			in flags									,IOFlags
+			endparams
+		proc
+			;;any original lock must have been cleared
+			clearExistingLock()
+		endmethod
+
+		;;; <summary>
+		;;; event method called prior to the record delete operation
+		;;; </summary>
+		;;; <returns></returns>
+		public override method Delete_pre_operation_hook	,void
+			endparams
+		proc
+			;;any original lock must have been cleared
+			clearExistingLock()
+		endmethod
+
+		;;; <summary>
+		;;; unlock event handler - only executed when an explicit unlonk is encountered
+		;;; </summary>
+		;;; <param name="rfaValue"></param>
+		;;; <param name="flags"></param>
+		;;; <returns></returns>
+		public override method Unlock_pre_operation_hook	,void
+			in optional rfaValue							,a
+			in flags										,IOFlags
+			endparams
+		proc
+			;;any original lock must have been cleared
+			clearExistingLock()
+		endmethod
+
+		;;; <summary>
+		;;; called when a file is closed
+		;;; </summary>
+		;;; <param name="flags"></param>
+		;;; <returns></returns>
+		public override method Close_pre_operation_hook	,void
+			in flags									,IOFlags
+			endparams
+		proc
+			;;any original lock must have been cleared
+			clearExistingLock()
+		endmethod
+
+		;;; <summary>
+		;;; After the find is performed, this method can record the lock.
+		;;; </summary>
+		;;; <param name="key"></param>
+		;;; <param name="out_rfa"></param>
+		;;; <param name="keyNumber"></param>
+		;;; <param name="flags"></param>
+		;;; <param name="error"></param>
+		;;; <returns></returns>
+		public override method Find_post_operation_hook	,void
+			mismatch in optional keyValue				,n
+			in optional rfaValue						,a
+			in optional keyNumber						,n
+			in inflags									,IOFlags
+			inout errorNumber							,int
+			endparams
+		proc
+			;;set the lock details
+			if (^passed(keyValue)) then
+			begin
+				using ^datatype(1) select
+				(D_TYPE_A),
+					setNewLock(^a(keyValue), "FIND", inflags)
+				(D_TYPE_D, D_TYPE_ID, D_TYPE_I),
+					setNewLock(%string(keyValue), "FIND", inflags)
+				endusing
+			end
+			else
+				setNewLock("<key not defined>", "FIND", inflags)
+		endmethod
+
+		;;; <summary>
+		;;; method hook called after a read of a record in a file
+		;;; </summary>
+		;;; <param name="buffer"></param>
+		;;; <param name="keyValue"></param>
+		;;; <param name="rfaValue"></param>
+		;;; <param name="keyNumer"></param>
+		;;; <param name="flags"></param>
+		;;; <param name="errorNumber"></param>
+		;;; <returns></returns>
+		public override method Read_post_operation_hook	,void
+			inout buffer								,a
+			mismatch in optional keyValue				,n
+			in optional rfaValue						,a
+			in optional keyNumber						,n
+			in inflags									,IOFlags
+			inout errorNumber							,int
+			endparams
+		proc
+			;;set the lock details#
+			if (^passed(keyNumber)) then
+				setNewLock(%keyval(mChannel, buffer, keyNumber), "READ", inflags)
+			else
+				setNewLock(%keyval(mChannel, buffer, 0), "READ", inflags)
+		endmethod
+
+		;;; <summary>
+		;;; method executed after the sequential read has been performed
+		;;; </summary>
+		;;; <param name="buffer"></param>
+		;;; <param name="out_rfa"></param>
+		;;; <param name="flags"></param>
+		;;; <param name="error"></param>
+		;;; <returns></returns>
+		public override method Reads_post_operation_hook	,void
+			inout buffer									,a
+			in optional out_rfa								,a
+			in inflags										,IOFlags
+			inout errorNumber								,int
+			endparams
+
+			record
+				tmp,i4
+			endrecord
+		proc
+			;;set the lock details
+			setNewLock(%keyval(mChannel, buffer, 0), "READS", inflags)
+		endmethod
+
+	endclass
+
+endnamespace
+
